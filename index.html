@@ -89,6 +89,7 @@
 <section id="s-stalno">
   <h2>3. Stalno slušanje (kao u vožnji)</h2>
   <p class="napomena">Pritisni jednom i govori nekoliko rečenica s pauzama. Gledam gdje Chrome sam reže rečenice i koliko brzo stigne tekst. Isto pritisni za kraj.</p>
+  <p class="napomena"><b>Na kraju misli reci „pošalji”.</b> Ako zaboraviš, poruka ide sama nakon 4 s tišine. Tako mjerim kako će most znati da si završio.</p>
   <button class="glavni" id="btnStalno">Kreni stalno slušanje</button>
   <div class="log" id="logStalno"></div>
 </section>
@@ -262,17 +263,38 @@ function govori() {
 }
 
 // ---------- 3. stalno slušanje ----------
-let srS = null, stalno = false, sesija = null, zadnjiKraj = 0;
+let srS = null, stalno = false, sesija = null, zadnjiKraj = 0, skupljeno = [], tisinaT = null;
+const TISINA_MS = window.__tisinaMs || 4000;
+// „pošalji” kao zasebna riječ (i bez kvačice); vraća tekst prije, je li nađena i ostatak iza
+function rastaviPosalji(t) {
+  const m = /(^|\s)po[sš]alji(?=$|[\s.,!?])[.,!?]?/i.exec(t);
+  if (!m) return { prije: t, nadjeno: false, poslije: '' };
+  return { prije: t.slice(0, m.index).trim(), nadjeno: true, poslije: t.slice(m.index + m[0].length).trim() };
+}
+function posaljiPoruku(kraj) {
+  clearTimeout(tisinaT); tisinaT = null;
+  const tekst = skupljeno.join(' ').replace(/\s+/g, ' ').trim(); skupljeno = [];
+  if (!tekst) return;
+  const s = sek(); sesija.poruke.push({ tekst, kraj, s });
+  logS('[' + s + ' s] → PORUKA (' + kraj + '): ' + tekst); spremi();
+}
+function dodajDio(t) {
+  let r = rastaviPosalji(t);
+  while (r.nadjeno) { if (r.prije) skupljeno.push(r.prije); posaljiPoruku('riječ'); r = rastaviPosalji(r.poslije); }
+  if (r.prije) skupljeno.push(r.prije);
+}
 function logS(t) { const l = $('logStalno'); l.textContent += t + '\n'; l.scrollTop = l.scrollHeight; }
 function pokreniS() {
   srS = new SR(); srS.lang = 'hr-HR'; srS.interimResults = true; srS.continuous = true;
   srS.onstart = () => { sesija.pokretanja++; logS('[' + sek() + ' s] slušam' + (sesija.pokretanja > 1 ? ' (ponovno pokretanje ' + sesija.pokretanja + ')' : '')); };
   srS.onresult = e => {
+    clearTimeout(tisinaT); tisinaT = null; // govor traje: tišina kreće ispočetka
     for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) {
       const t = e.results[i][0].transcript.trim(); if (!t) continue;
       const s = sek(); sesija.dijelovi.push({ s, t, razmakOdProslog: zadnjiKraj ? +(s - zadnjiKraj).toFixed(1) : null }); zadnjiKraj = s;
-      logS('[' + s + ' s] „' + t + '”'); spremi();
+      logS('[' + s + ' s] „' + t + '”'); dodajDio(t); spremi();
     }
+    if (skupljeno.length) tisinaT = setTimeout(() => posaljiPoruku('tišina'), TISINA_MS);
   };
   srS.onerror = e => { sesija.greske.push(e.error); logS('[' + sek() + ' s] greška: ' + e.error); };
   srS.onend = () => { logS('[' + sek() + ' s] Chrome je prestao slušati'); if (stalno) setTimeout(() => { try { pokreniS(); srS.start(); } catch (e) { logS('ne mogu ponovno: ' + e.message); } }, 150); };
@@ -280,9 +302,9 @@ function pokreniS() {
 }
 function sek() { return +((performance.now() - sesija.t0) / 1000).toFixed(1); }
 function stalnoPrekidac() {
-  if (stalno) { stalno = false; srS && srS.stop(); $('btnStalno').textContent = 'Kreni stalno slušanje'; $('btnStalno').classList.remove('slusa'); sesija.trajanjeS = sek(); spremi(); logS('— kraj, spremljeno —'); potvrda('Stalno slušanje spremljeno'); osvjeziRezultat(); return; }
-  stalno = true; zadnjiKraj = 0; $('logStalno').textContent = '';
-  sesija = { vrijeme: new Date().toISOString(), okolina: $('okolina').value, mikrofon: $('mikrofon').value, t0: performance.now(), pokretanja: 0, greske: [], dijelovi: [] };
+  if (stalno) { stalno = false; srS && srS.stop(); posaljiPoruku('ručno'); $('btnStalno').textContent = 'Kreni stalno slušanje'; $('btnStalno').classList.remove('slusa'); sesija.trajanjeS = sek(); spremi(); logS('— kraj, spremljeno —'); potvrda('Stalno slušanje spremljeno'); osvjeziRezultat(); return; }
+  stalno = true; zadnjiKraj = 0; skupljeno = []; clearTimeout(tisinaT); $('logStalno').textContent = '';
+  sesija = { vrijeme: new Date().toISOString(), okolina: $('okolina').value, mikrofon: $('mikrofon').value, t0: performance.now(), pokretanja: 0, greske: [], dijelovi: [], poruke: [] };
   stanje.stalno.push(sesija);
   $('btnStalno').textContent = 'Slušam stalno… (dodir = kraj)'; $('btnStalno').classList.add('slusa');
   try { pokreniS().start(); } catch (e) { logS('ne mogu pokrenuti: ' + e.message); }
@@ -349,7 +371,7 @@ $('btnObrisi').onclick = () => { if (confirm('Obrisati sve spremljene probe?')) 
 stanje.probe.forEach(z => { if (!z.ref || !z.cuo) return; const staro = z.naEkranuBila || z.br; const pr = pravaRecenica(staro, z.cuo); z.br = pr.br; z.ref = pr.ref; if (pr.zamjena) z.naEkranuBila = pr.zamjena; else delete z.naEkranuBila; Object.assign(z, pr.o); }); try { spremi(); } catch (e) { /* bez spremanja */ }
 provjeriPodrsku(); prikaziRecenicu(); osvjeziRezultat(); ucitajGlasove();
 if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = ucitajGlasove;
-window.__test = { ocijeni, pravaRecenica, tokeni, broj, brojURijeci };
+window.__test = { ocijeni, pravaRecenica, tokeni, broj, brojURijeci, rastaviPosalji };
 </script>
 </body>
 </html>
