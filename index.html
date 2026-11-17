@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proba glasa · hrvatski</title>
+<style>
+  :root { --crvena:#c8102e; --tamna:#151515; --siva:#2a2a2a; --svijetla:#f2f2f2; --zelena:#2e9d4f; --zuta:#d9a400; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--tamna); color:var(--svijetla); }
+  header { background:#000; border-bottom:3px solid var(--crvena); padding:12px 16px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:4px 0 0; font-size:14px; color:#bbb; }
+  main { max-width:760px; margin:0 auto; padding:12px 14px 80px; }
+  section { background:var(--siva); border-radius:10px; padding:14px; margin:12px 0; }
+  h2 { font-size:17px; margin:0 0 8px; }
+  .napomena { font-size:14px; color:#bbb; margin:6px 0; }
+  .stanje { font-size:15px; padding:8px 10px; border-radius:8px; background:#000; margin:8px 0; min-height:38px; }
+  .stanje.ok { border-left:4px solid var(--zelena); }
+  .stanje.greska { border-left:4px solid var(--crvena); }
+  .stanje.rad { border-left:4px solid var(--zuta); }
+  button { font:inherit; font-size:17px; border:0; border-radius:10px; padding:14px 16px; cursor:pointer; color:#fff; background:#444; min-height:52px; }
+  button.glavni { background:var(--crvena); width:100%; font-size:20px; font-weight:600; }
+  button.glavni.slusa { background:var(--zuta); color:#000; }
+  button:disabled { opacity:.4; }
+  .redak { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
+  .redak > * { flex:1 1 140px; }
+  select { font:inherit; font-size:16px; padding:10px; border-radius:8px; background:#000; color:#fff; border:1px solid #555; min-height:48px; }
+  .recenica { font-size:22px; line-height:1.35; padding:12px; background:#000; border-radius:8px; border-left:4px solid var(--crvena); }
+  .broj { font-size:14px; color:#bbb; }
+  .cuo { font-size:18px; padding:10px; background:#111; border-radius:8px; margin-top:8px; min-height:44px; white-space:pre-wrap; }
+  .cuo .privremeno { color:#888; }
+  .ocjena { font-size:16px; margin-top:6px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td, th { border-bottom:1px solid #444; padding:6px 4px; text-align:left; vertical-align:top; }
+  .dobro { color:#6fd38c; } .srednje { color:#f0c33c; } .lose { color:#ff6b6b; }
+  textarea { width:100%; min-height:120px; font-family:ui-monospace,Consolas,monospace; font-size:12px; background:#000; color:#ddd; border:1px solid #555; border-radius:8px; padding:8px; }
+  .log { font-family:ui-monospace,Consolas,monospace; font-size:13px; background:#000; border-radius:8px; padding:8px; max-height:260px; overflow:auto; white-space:pre-wrap; }
+  .potvrda { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:var(--zelena); color:#fff; padding:12px 18px; border-radius:10px; font-size:16px; display:none; z-index:9; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Proba glasa · koliko dobro razumije hrvatski</h1>
+  <p>Prvi dio: prepoznavanje u Chromeu (Google). Ništa se ne šalje Claudeu dok ne kopiraš rezultat.</p>
+</header>
+<main>
+
+<section id="s-podrska">
+  <h2>1. Provjera preglednika</h2>
+  <div id="podrska" class="stanje rad">Provjeravam…</div>
+  <div class="redak">
+    <label>Okolina<br>
+      <select id="okolina">
+        <option value="tiho">Tiho (soba)</option>
+        <option value="auto-stoji">Auto, stoji, motor radi</option>
+        <option value="auto-vozi">Auto u vožnji</option>
+        <option value="radionica">Radionica, buka</option>
+      </select>
+    </label>
+    <label>Mikrofon<br>
+      <select id="mikrofon">
+        <option value="mobitel">Mobitel</option>
+        <option value="slusalice">Slušalice / Bluetooth</option>
+        <option value="auto-bt">Auto (Bluetooth)</option>
+        <option value="racunalo">Računalo</option>
+      </select>
+    </label>
+  </div>
+  <p class="napomena">Prvi put probaj u tišini, pa ponovi u autu ili radionici. Svaka proba se pamti zasebno.</p>
+</section>
+
+<section id="s-recenice">
+  <h2>2. Pročitaj rečenicu naglas</h2>
+  <div class="broj" id="brojRecenice"></div>
+  <div class="recenica" id="recenica"></div>
+  <div class="redak" style="margin-top:10px">
+    <button class="glavni" id="btnGovori">Govori</button>
+  </div>
+  <div class="cuo" id="cuo"></div>
+  <div class="ocjena" id="ocjena"></div>
+  <div class="redak">
+    <button id="btnPonovi">Ponovi rečenicu</button>
+    <button id="btnSljedeca">Sljedeća</button>
+  </div>
+  <p class="napomena">Govori prirodno, kao kad meni diktiraš. Brojeve izgovaraj riječima.</p>
+</section>
+
+<section id="s-stalno">
+  <h2>3. Stalno slušanje (kao u vožnji)</h2>
+  <p class="napomena">Pritisni jednom i govori nekoliko rečenica s pauzama. Gledam gdje Chrome sam reže rečenice i koliko brzo stigne tekst. Isto pritisni za kraj.</p>
+  <button class="glavni" id="btnStalno">Kreni stalno slušanje</button>
+  <div class="log" id="logStalno"></div>
+</section>
+
+<section id="s-naglas">
+  <h2>4. Čitanje naglas na hrvatskom</h2>
+  <div id="glasovi" class="stanje rad">Tražim hrvatske glasove…</div>
+  <div class="redak">
+    <select id="izborGlasa"></select>
+    <button id="btnProcitaj">Pročitaj primjer</button>
+  </div>
+  <div class="redak">
+    <button id="btnRazumljivo">Razumljivo</button>
+    <button id="btnNerazumljivo">Teško razumljivo</button>
+  </div>
+</section>
+
+<section id="s-rezultat">
+  <h2>5. Rezultat</h2>
+  <div id="sazetak" class="stanje">Još nema pročitanih rečenica.</div>
+  <table id="tablica"><thead><tr><th>#</th><th>Okolina</th><th>Točnost</th><th>Što je čuo</th></tr></thead><tbody></tbody></table>
+  <div class="redak" style="margin-top:10px">
+    <button class="glavni" id="btnKopiraj">Kopiraj rezultat za Claudea</button>
+  </div>
+  <p class="napomena">Nakon kopiranja zalijepi tekst u sesiju i pošalji.</p>
+  <details><summary class="napomena">Prikaži tekst rezultata</summary><textarea id="izvoz" readonly></textarea></details>
+  <div class="redak"><button id="btnObrisi">Obriši sve probe</button></div>
+</section>
+
+</main>
+<div class="potvrda" id="potvrda"></div>
+
+<script>
+'use strict';
+const RECENICE = [
+  'Kvadratna cijev četrdeset puta četrdeset puta dva, dužina šest metara',
+  'Odreži dvanaest komada po tisuću dvjesto pedeset milimetara',
+  'Deploy opt na staging pa mi javi kad prođu testovi',
+  'Pocinčani lim debljine jedan zarez pet milimetara',
+  'Zavari kutnik pedeset puta pedeset puta pet na ploču',
+  'Što je sljedeće u planu za Komadar Plan',
+  'Pokreni lovca na greške i javi mi koliko blokira',
+  'Ograda za Vir ide sutra u sedam ujutro',
+  'Provjeri jesu li testovi zeleni prije objave na produkciju',
+  'Napravi ponudu za tri vrata od inoksa sa staklom',
+  'Može, ali prvo mi pokaži razliku',
+  'Nemoj to dirati dok se ne vratim u radionicu'
+];
+const PRIMJER_NAGLAS = 'Staging je gotov. Verzija tristo dvadeset tri prošla je sve testove, lovac ne blokira ništa. Za produkciju treba tvoje može i petnaest kredita.';
+const KLJUC = 'glas-proba-v1';
+
+const $ = id => document.getElementById(id);
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let stanje = ucitaj();
+let indeks = stanje.indeks || 0;
+
+function ucitaj() { try { return JSON.parse(localStorage.getItem(KLJUC)) || { probe: [], stalno: [], naglas: [] }; } catch (e) { return { probe: [], stalno: [], naglas: [] }; } }
+function spremi() { stanje.indeks = indeks; localStorage.setItem(KLJUC, JSON.stringify(stanje)); }
+function potvrda(t) { const p = $('potvrda'); p.textContent = t; p.style.display = 'block'; clearTimeout(potvrda.t); potvrda.t = setTimeout(() => p.style.display = 'none', 2200); }
+
+// ---------- usporedba teksta ----------
+const JED = ['nula','jedan','dva','tri','četiri','pet','šest','sedam','osam','devet','deset','jedanaest','dvanaest','trinaest','četrnaest','petnaest','šesnaest','sedamnaest','osamnaest','devetnaest'];
+const DES = ['','','dvadeset','trideset','četrdeset','pedeset','šezdeset','sedamdeset','osamdeset','devedeset'];
+const STO = ['','sto','dvjesto','tristo','četiristo','petsto','šesto','sedamsto','osamsto','devetsto'];
+function doSto(n) { if (n < 20) return [JED[n]]; const d = Math.floor(n / 10), j = n % 10; return j ? [DES[d], 'i', JED[j]].filter(x => x !== 'i') : [DES[d]]; }
+function broj(n) {
+  if (n === 0) return ['nula'];
+  const r = []; const t = Math.floor(n / 1000), ost = n % 1000;
+  if (t) { if (t === 1) r.push('tisuću'); else { const bt = broj(t); const zad = bt.length - 1; if (bt[zad] === 'dva') bt[zad] = 'dvije'; else if (bt[zad] === 'jedan') bt[zad] = 'jedna'; r.push(...bt); const z = t % 10, zz = t % 100; r.push((z >= 2 && z <= 4 && !(zz >= 12 && zz <= 14)) ? 'tisuće' : 'tisuća'); } }
+  const s = Math.floor(ost / 100), d = ost % 100;
+  if (s) r.push(STO[s]);
+  if (d) r.push(...doSto(d));
+  return r;
+}
+function brojURijeci(tekst) {
+  return tekst.replace(/(\d+)(?:[.,](\d+))?/g, (m, a, b) => {
+    const cijeli = parseInt(a, 10);
+    if (cijeli > 999999) return m;
+    let r = broj(cijeli).join(' ');
+    if (b !== undefined) r += ' zarez ' + (b.length <= 2 && b[0] !== '0' ? broj(parseInt(b, 10)).join(' ') : b.split('').map(c => JED[+c]).join(' '));
+    return ' ' + r + ' ';
+  });
+}
+const KANON = { jedna:'jedan', jedno:'jedan', dvije:'dva', tisuću:'tisuca', tisuće:'tisuca', tisuća:'tisuca', x:'puta', '×':'puta', mm:'milimetara', m:'metara' };
+function tokeni(tekst, bezKvacica) {
+  let t = brojURijeci(tekst.toLowerCase());
+  t = t.replace(/(\d)\s*[x×]\s*(\d)/g, '$1 puta $2').replace(/[x×]/g, ' x ');
+  t = t.replace(/[.,!?;:"'„“”()\-–]/g, ' ');
+  let w = t.split(/\s+/).filter(Boolean).map(x => KANON[x] || x);
+  if (bezKvacica) w = w.map(x => x.replace(/[čć]/g, 'c').replace(/š/g, 's').replace(/ž/g, 'z').replace(/đ/g, 'd'));
+  return w;
+}
+function udaljenost(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+function ocijeni(ref, hip) {
+  const r = tokeni(ref), h = tokeni(hip);
+  const wer = r.length ? udaljenost(r, h) / r.length : 0;
+  const r2 = tokeni(ref, true), h2 = tokeni(hip, true);
+  const wer2 = r2.length ? udaljenost(r2, h2) / r2.length : 0;
+  return { tocnost: Math.max(0, Math.round((1 - wer) * 100)), tocnostBezKvacica: Math.max(0, Math.round((1 - wer2) * 100)), rijeci: r.length, greske: udaljenost(r, h) };
+}
+function klasa(p) { return p >= 90 ? 'dobro' : p >= 75 ? 'srednje' : 'lose'; }
+
+// ---------- 1. podrška ----------
+function provjeriPodrsku() {
+  const p = $('podrska');
+  if (!SR) { p.className = 'stanje greska'; p.textContent = 'Ovaj preglednik nema prepoznavanje govora. Otvori stranicu u Chromeu.'; $('btnGovori').disabled = true; $('btnStalno').disabled = true; return; }
+  if (!window.isSecureContext) { p.className = 'stanje greska'; p.textContent = 'Stranica nije otvorena preko https, mikrofon neće raditi.'; return; }
+  p.className = 'stanje ok'; p.textContent = 'Chrome prepoznavanje govora postoji. Kod prvog pritiska na Govori dopusti mikrofon.';
+}
+
+// ---------- 2. rečenice ----------
+let sr = null, slusam = false, pocetak = 0, prviTekst = 0, zadnjiPrivremeni = '';
+function prikaziRecenicu() {
+  indeks = ((indeks % RECENICE.length) + RECENICE.length) % RECENICE.length;
+  $('brojRecenice').textContent = 'Rečenica ' + (indeks + 1) + ' od ' + RECENICE.length;
+  $('recenica').textContent = RECENICE[indeks];
+  $('cuo').textContent = ''; $('ocjena').textContent = '';
+  spremi();
+}
+function govori() {
+  if (slusam) { sr && sr.stop(); return; }
+  sr = new SR(); sr.lang = 'hr-HR'; sr.interimResults = true; sr.continuous = false; sr.maxAlternatives = 3;
+  let konacno = null, alternative = [];
+  pocetak = performance.now(); prviTekst = 0; zadnjiPrivremeni = '';
+  sr.onstart = () => { slusam = true; $('btnGovori').textContent = 'Slušam… (dodir = kraj)'; $('btnGovori').classList.add('slusa'); $('cuo').innerHTML = '<span class="privremeno">Govori sada…</span>'; };
+  sr.onresult = e => {
+    let priv = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const res = e.results[i];
+      if (!prviTekst) prviTekst = performance.now();
+      if (res.isFinal) { konacno = res[0].transcript.trim(); alternative = Array.from(res).map(a => ({ t: a.transcript.trim(), p: Math.round((a.confidence || 0) * 100) })); }
+      else priv += res[0].transcript;
+    }
+    zadnjiPrivremeni = priv || zadnjiPrivremeni;
+    $('cuo').innerHTML = '';
+    $('cuo').append(document.createTextNode(konacno || ''));
+    if (!konacno && priv) { const s = document.createElement('span'); s.className = 'privremeno'; s.textContent = priv; $('cuo').append(s); }
+  };
+  sr.onerror = e => { $('ocjena').innerHTML = '<span class="lose">Greška: ' + e.error + (e.error === 'not-allowed' ? ' (mikrofon nije dopušten)' : e.error === 'no-speech' ? ' (nisam čuo govor)' : e.error === 'network' ? ' (nema mreže, Chrome treba internet)' : '') + '</span>'; };
+  sr.onend = () => {
+    slusam = false; $('btnGovori').textContent = 'Govori'; $('btnGovori').classList.remove('slusa');
+    const kraj = performance.now();
+    const tekst = konacno || zadnjiPrivremeni.trim();
+    if (!tekst) return;
+    const o = ocijeni(RECENICE[indeks], tekst);
+    const zapis = { vrijeme: new Date().toISOString(), okolina: $('okolina').value, mikrofon: $('mikrofon').value, br: indeks + 1, ref: RECENICE[indeks], cuo: tekst, konacno: !!konacno, alternative, ...o, msDoPrvogTeksta: prviTekst ? Math.round(prviTekst - pocetak) : null, msUkupno: Math.round(kraj - pocetak) };
+    stanje.probe.push(zapis); spremi();
+    $('ocjena').innerHTML = '<span class="' + klasa(o.tocnost) + '">Točnost ' + o.tocnost + ' %</span> · bez kvačica ' + o.tocnostBezKvacica + ' % · ' + o.greske + ' pogrešnih riječi od ' + o.rijeci;
+    potvrda('Spremljeno: rečenica ' + (indeks + 1) + ', ' + o.tocnost + ' %');
+    osvjeziRezultat();
+  };
+  try { sr.start(); } catch (e) { $('ocjena').textContent = 'Ne mogu pokrenuti: ' + e.message; }
+}
+
+// ---------- 3. stalno slušanje ----------
+let srS = null, stalno = false, sesija = null, zadnjiKraj = 0;
+function logS(t) { const l = $('logStalno'); l.textContent += t + '\n'; l.scrollTop = l.scrollHeight; }
+function pokreniS() {
+  srS = new SR(); srS.lang = 'hr-HR'; srS.interimResults = true; srS.continuous = true;
+  srS.onstart = () => { sesija.pokretanja++; logS('[' + sek() + ' s] slušam' + (sesija.pokretanja > 1 ? ' (ponovno pokretanje ' + sesija.pokretanja + ')' : '')); };
+  srS.onresult = e => {
+    for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) {
+      const t = e.results[i][0].transcript.trim(); if (!t) continue;
+      const s = sek(); sesija.dijelovi.push({ s, t, razmakOdProslog: zadnjiKraj ? +(s - zadnjiKraj).toFixed(1) : null }); zadnjiKraj = s;
+      logS('[' + s + ' s] „' + t + '”'); spremi();
+    }
+  };
+  srS.onerror = e => { sesija.greske.push(e.error); logS('[' + sek() + ' s] greška: ' + e.error); };
+  srS.onend = () => { logS('[' + sek() + ' s] Chrome je prestao slušati'); if (stalno) setTimeout(() => { try { pokreniS(); srS.start(); } catch (e) { logS('ne mogu ponovno: ' + e.message); } }, 150); };
+  return srS;
+}
+function sek() { return +((performance.now() - sesija.t0) / 1000).toFixed(1); }
+function stalnoPrekidac() {
+  if (stalno) { stalno = false; srS && srS.stop(); $('btnStalno').textContent = 'Kreni stalno slušanje'; $('btnStalno').classList.remove('slusa'); sesija.trajanjeS = sek(); spremi(); logS('— kraj, spremljeno —'); potvrda('Stalno slušanje spremljeno'); osvjeziRezultat(); return; }
+  stalno = true; zadnjiKraj = 0; $('logStalno').textContent = '';
+  sesija = { vrijeme: new Date().toISOString(), okolina: $('okolina').value, mikrofon: $('mikrofon').value, t0: performance.now(), pokretanja: 0, greske: [], dijelovi: [] };
+  stanje.stalno.push(sesija);
+  $('btnStalno').textContent = 'Slušam stalno… (dodir = kraj)'; $('btnStalno').classList.add('slusa');
+  try { pokreniS().start(); } catch (e) { logS('ne mogu pokrenuti: ' + e.message); }
+}
+
+// ---------- 4. naglas ----------
+let glasovi = [];
+function ucitajGlasove() {
+  if (!('speechSynthesis' in window)) { $('glasovi').className = 'stanje greska'; $('glasovi').textContent = 'Preglednik ne zna čitati naglas.'; return; }
+  const svi = speechSynthesis.getVoices();
+  glasovi = svi.filter(v => /^hr/i.test(v.lang));
+  const sel = $('izborGlasa'); sel.innerHTML = '';
+  (glasovi.length ? glasovi : svi.filter(v => /^(sr|bs|sl)/i.test(v.lang))).forEach((v, i) => { const o = document.createElement('option'); o.value = v.name; o.textContent = v.name + ' (' + v.lang + ')' + (v.localService ? ', na mobitelu' : ', s mreže'); sel.append(o); });
+  if (glasovi.length) { $('glasovi').className = 'stanje ok'; $('glasovi').textContent = 'Hrvatskih glasova: ' + glasovi.length + '. Pritisni Pročitaj primjer.'; }
+  else if (svi.length) { $('glasovi').className = 'stanje greska'; $('glasovi').textContent = 'Hrvatskog glasa nema (ukupno glasova: ' + svi.length + '). Ponuđeni su srodni jezici, ako ih ima.'; }
+}
+function procitaj() {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(PRIMJER_NAGLAS); u.lang = 'hr-HR';
+  const v = speechSynthesis.getVoices().find(x => x.name === $('izborGlasa').value); if (v) { try { u.voice = v; } catch (e) { /* glas nije pravi objekt: ostaje jezik hr-HR */ } u.lang = v.lang; }
+  u.onstart = () => potvrda('Čitam naglas…');
+  u.onerror = e => potvrda('Greška čitanja: ' + e.error);
+  speechSynthesis.speak(u);
+}
+function ocjenaNaglas(r) { stanje.naglas.push({ vrijeme: new Date().toISOString(), glas: $('izborGlasa').value || null, hrGlasova: glasovi.length, razumljivo: r }); spremi(); potvrda('Ocjena čitanja spremljena'); osvjeziRezultat(); }
+
+// ---------- 5. rezultat ----------
+function osvjeziRezultat() {
+  const tb = $('tablica').querySelector('tbody'); tb.innerHTML = '';
+  stanje.probe.slice(-30).forEach(z => {
+    const tr = document.createElement('tr');
+    [z.br, z.okolina, null, z.cuo].forEach((v, i) => { const td = document.createElement('td'); if (i === 2) { td.className = klasa(z.tocnost); td.textContent = z.tocnost + ' %'; } else td.textContent = v; tr.append(td); });
+    tb.append(tr);
+  });
+  const po = {};
+  stanje.probe.forEach(z => { (po[z.okolina] = po[z.okolina] || []).push(z); });
+  const dijelovi = Object.entries(po).map(([ok, a]) => { const s = Math.round(a.reduce((x, z) => x + z.tocnost, 0) / a.length); return ok + ': ' + s + ' % (' + a.length + ' rečenica)'; });
+  $('sazetak').className = 'stanje' + (stanje.probe.length ? ' ok' : '');
+  $('sazetak').textContent = stanje.probe.length ? 'Prosječna točnost po okolini: ' + dijelovi.join(' · ') : 'Još nema pročitanih rečenica.';
+  $('izvoz').value = tekstIzvoza();
+}
+function tekstIzvoza() {
+  const kopija = JSON.parse(JSON.stringify(stanje)); delete kopija.indeks; (kopija.stalno || []).forEach(s => delete s.t0);
+  return 'PROBA GLASA (Chrome hr-HR) ' + new Date().toLocaleString('hr-HR') + '\nUređaj: ' + navigator.userAgent + '\n' + JSON.stringify(kopija);
+}
+async function kopiraj() {
+  const t = tekstIzvoza();
+  try { await navigator.clipboard.writeText(t); potvrda('Kopirano. Zalijepi u sesiju.'); }
+  catch (e) { const ta = $('izvoz'); ta.closest('details').open = true; ta.select(); document.execCommand('copy'); potvrda('Kopirano. Zalijepi u sesiju.'); }
+}
+
+$('btnGovori').onclick = govori;
+$('btnPonovi').onclick = prikaziRecenicu;
+$('btnSljedeca').onclick = () => { indeks++; prikaziRecenicu(); };
+$('btnStalno').onclick = stalnoPrekidac;
+$('btnProcitaj').onclick = procitaj;
+$('btnRazumljivo').onclick = () => ocjenaNaglas(true);
+$('btnNerazumljivo').onclick = () => ocjenaNaglas(false);
+$('btnKopiraj').onclick = kopiraj;
+$('btnObrisi').onclick = () => { if (confirm('Obrisati sve spremljene probe?')) { stanje = { probe: [], stalno: [], naglas: [] }; indeks = 0; spremi(); prikaziRecenicu(); osvjeziRezultat(); potvrda('Obrisano'); } };
+
+provjeriPodrsku(); prikaziRecenicu(); osvjeziRezultat(); ucitajGlasove();
+if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = ucitajGlasove;
+window.__test = { ocijeni, tokeni, broj, brojURijeci };
+</script>
+</body>
+</html>
